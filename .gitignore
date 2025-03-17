@@ -398,3 +398,6 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Temporary ignore to clean repository of unnecesary files while configuring the .gitignore
+*TempIgnore
