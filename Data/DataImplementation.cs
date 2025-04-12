@@ -22,25 +22,45 @@ namespace TP.ConcurrentProgramming.Data
       MoveTimer = new Timer(Move, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(100));
     }
 
-    #endregion ctor
+        public override void Start(int numberOfBalls, Action<IVector, IBall> upperLayerHandler)
+        {
+            if (Disposed)
+                throw new ObjectDisposedException(nameof(DataImplementation));
+            if (upperLayerHandler == null)
+                throw new ArgumentNullException(nameof(upperLayerHandler));
+            Random random = new Random();
+            const double minDistance = 20.0; // Minimum distance between balls
 
-    #region DataAbstractAPI
+            for (int i = 0; i < numberOfBalls; i++)
+            {
+                Vector startingPosition;
+                bool validPosition;
 
-    public override void Start(int numberOfBalls, Action<IVector, IBall> upperLayerHandler)
-    {
-      if (Disposed)
-        throw new ObjectDisposedException(nameof(DataImplementation));
-      if (upperLayerHandler == null)
-        throw new ArgumentNullException(nameof(upperLayerHandler));
-      Random random = new Random();
-      for (int i = 0; i < numberOfBalls; i++)
-      {
-        Vector startingPosition = new(random.Next(100, 400 - 100), random.Next(100, 400 - 100));
-        Ball newBall = new(startingPosition, startingPosition);
-        upperLayerHandler(startingPosition, newBall);
-        BallsList.Add(newBall);
-      }
-    }
+                do
+                {
+                    validPosition = true;
+                    startingPosition = new Vector(random.Next(100, 400 - 100), random.Next(100, 400 - 100));
+
+                    foreach (Ball existingBall in BallsList)
+                    {
+                        double dx = existingBall.GetPosition().x - startingPosition.x;
+                        double dy = existingBall.GetPosition().y - startingPosition.y;
+                        double distance = Math.Sqrt(dx * dx + dy * dy);
+
+                        if (distance < minDistance)
+                        {
+                            validPosition = false;
+                            break;
+                        }
+                    }
+                } while (!validPosition);
+
+                Vector initialVelocity = new((random.NextDouble() - 1.5) * 2, (random.NextDouble() - 1.5) * 2); // Reduced velocity
+                Ball newBall = new(startingPosition, initialVelocity);
+                upperLayerHandler(startingPosition, newBall);
+                BallsList.Add(newBall);
+            }
+        }
 
     #endregion DataAbstractAPI
 
@@ -79,11 +99,54 @@ namespace TP.ConcurrentProgramming.Data
     private Random RandomGenerator = new();
     private List<Ball> BallsList = [];
 
-    private void Move(object? x)
-    {
-      foreach (Ball item in BallsList)
-        item.Move(new Vector((RandomGenerator.NextDouble() - 0.5) * 10, (RandomGenerator.NextDouble() - 0.5) * 10));
-    }
+        private void Move(object? x)
+        {
+            const double displayWidth = 400;
+            const double displayHeight = 400;
+            const double ballRadius = 10; // Assuming each ball has a radius of 10 units
+
+            for (int i = 0; i < BallsList.Count; i++)
+            {
+                Ball ball = BallsList[i];
+
+                // Calculate new position
+                Vector newPosition = new Vector(ball.GetPosition().x + ball.Velocity.x, ball.GetPosition().y + ball.Velocity.y);
+
+                // Check for collision with the left or right wall
+                if (newPosition.x - ballRadius <= 0 || newPosition.x + ballRadius >= displayWidth)
+                {
+                    // Reverse the x component of the velocity
+                    ball.Velocity = new Vector(-ball.Velocity.x, ball.Velocity.y);
+                }
+
+                // Check for collision with the top or bottom wall
+                if (newPosition.y - ballRadius <= 0 || newPosition.y + ballRadius >= displayHeight)
+                {
+                    // Reverse the y component of the velocity
+                    ball.Velocity = new Vector(ball.Velocity.x, -ball.Velocity.y);
+                }
+
+                // Check for collisions with other balls
+                for (int j = i + 1; j < BallsList.Count; j++)
+                {
+                    Ball otherBall = BallsList[j];
+                    double dx = otherBall.GetPosition().x - ball.GetPosition().x;
+                    double dy = otherBall.GetPosition().y - ball.GetPosition().y;
+                    double distance = Math.Sqrt(dx * dx + dy * dy);
+
+                    if (distance < 2 * ballRadius)
+                    {
+                        // Simple elastic collision response
+                        Vector tempVelocity = (Vector)ball.Velocity;
+                        ball.Velocity = otherBall.Velocity;
+                        otherBall.Velocity = tempVelocity;
+                    }
+                }
+
+                // Move the ball
+                ball.Move((Vector)ball.Velocity);
+            }
+        }
 
     #endregion private
 
