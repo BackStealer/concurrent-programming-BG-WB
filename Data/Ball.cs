@@ -56,6 +56,17 @@ namespace TP.ConcurrentProgramming.Data
         {
             Position = new Vector(position.x, position.y);
         }
+
+        void IBall.Move(IVector vector)
+        {
+            Move(vector);
+        }
+
+        public void Move(IVector vector)
+        {
+            Position = new Vector(Position.x + vector.x, Position.y + vector.y);
+            RaiseNewPositionChangeNotification();
+        }
         #endregion Gets/Sets
     }
 }

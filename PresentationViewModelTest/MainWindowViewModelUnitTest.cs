@@ -56,6 +56,7 @@ namespace TP.ConcurrentProgramming.Presentation.ViewModel.Test
       Assert.AreEqual<int>(0, viewModel.Balls.Count);
     }
 
+
     #region testing infrastructure
 
     private class ModelNullFixture : ModelAbstractApi

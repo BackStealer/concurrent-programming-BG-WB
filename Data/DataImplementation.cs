@@ -101,50 +101,41 @@ namespace TP.ConcurrentProgramming.Data
 
         private void Move(object? x)
         {
-            const double displayWidth = 400;
-            const double displayHeight = 400;
-            const double ballRadius = 10; // Assuming each ball has a radius of 10 units
+            const double displayWidth = 400;  // Szerokość obszaru gry
+            const double displayHeight = 400; // Wysokość obszaru gry
+            const double ballRadius = 10;     // Promień kulki
 
             for (int i = 0; i < BallsList.Count; i++)
             {
                 Ball ball = BallsList[i];
 
-                // Calculate new position
+                // Oblicz nową pozycję kulki
                 Vector newPosition = new Vector(ball.GetPosition().x + ball.Velocity.x, ball.GetPosition().y + ball.Velocity.y);
 
-                // Check for collision with the left or right wall
+                // Sprawdź kolizję z lewą i prawą ścianą
                 if (newPosition.x - ballRadius <= 0 || newPosition.x + ballRadius >= displayWidth)
                 {
-                    // Reverse the x component of the velocity
+                    // Odwróć prędkość w osi X
                     ball.Velocity = new Vector(-ball.Velocity.x, ball.Velocity.y);
+
+                    // Ustaw kulkę w granicach
+                    double correctedX = Math.Clamp(newPosition.x, ballRadius, displayWidth - ballRadius);
+                    ball.SetPosition(new Vector(correctedX, ball.GetPosition().y));
                 }
 
-                // Check for collision with the top or bottom wall
+                // Sprawdź kolizję z górną i dolną ścianą
                 if (newPosition.y - ballRadius <= 0 || newPosition.y + ballRadius >= displayHeight)
                 {
-                    // Reverse the y component of the velocity
+                    // Odwróć prędkość w osi Y
                     ball.Velocity = new Vector(ball.Velocity.x, -ball.Velocity.y);
+
+                    // Ustaw kulkę w granicach
+                    double correctedY = Math.Clamp(newPosition.y, ballRadius, displayHeight - ballRadius);
+                    ball.SetPosition(new Vector(ball.GetPosition().x, correctedY));
                 }
 
-                // Check for collisions with other balls
-                for (int j = i + 1; j < BallsList.Count; j++)
-                {
-                    Ball otherBall = BallsList[j];
-                    double dx = otherBall.GetPosition().x - ball.GetPosition().x;
-                    double dy = otherBall.GetPosition().y - ball.GetPosition().y;
-                    double distance = Math.Sqrt(dx * dx + dy * dy);
-
-                    if (distance < 2 * ballRadius)
-                    {
-                        // Simple elastic collision response
-                        Vector tempVelocity = (Vector)ball.Velocity;
-                        ball.Velocity = otherBall.Velocity;
-                        otherBall.Velocity = tempVelocity;
-                    }
-                }
-
-                // Move the ball
-                ball.Move((Vector)ball.Velocity);
+                // Przesuń kulkę
+                ball.Move(ball.Velocity);
             }
         }
 

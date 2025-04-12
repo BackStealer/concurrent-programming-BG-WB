@@ -114,7 +114,12 @@ namespace TP.ConcurrentProgramming.BusinessLogic.Test
         public IVector Velocity { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         public event EventHandler<IVector>? NewPositionNotification = null;
-      }
+
+                public void Move(IVector vector)
+                {
+                    throw new NotImplementedException();
+                }
+            }
     }
 
     #endregion testing instrumentation
