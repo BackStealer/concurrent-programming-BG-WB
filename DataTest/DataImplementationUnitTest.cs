@@ -89,7 +89,7 @@ namespace TP.ConcurrentProgramming.Data.Test
         }
 
         [TestMethod]
-        public void Start_BallsAreAtLeast20UnitsApart()
+        public void Start_BallsAreAtLeastXUnitsApart()
         {
             // Arrange
             using var dataImplementation = new DataImplementation();
@@ -104,7 +104,7 @@ namespace TP.ConcurrentProgramming.Data.Test
                     double dx = existingPosition.x - position.x;
                     double dy = existingPosition.y - position.y;
                     double distance = Math.Sqrt(dx * dx + dy * dy);
-                    Assert.IsTrue(distance >= 20.0, "Balls are too close to each other.");
+                    Assert.IsTrue(distance >= 12.0, "Balls are too close to each other.");
                 }
                 positions.Add(position);
             });

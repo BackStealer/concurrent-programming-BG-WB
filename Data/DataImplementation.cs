@@ -29,7 +29,7 @@ namespace TP.ConcurrentProgramming.Data
             if (upperLayerHandler == null)
                 throw new ArgumentNullException(nameof(upperLayerHandler));
             Random random = new Random();
-            const double minDistance = 20.0; // Minimum distance between balls
+            const double minDistance = 10.0; // Minimum distance between balls
 
             for (int i = 0; i < numberOfBalls; i++)
             {
@@ -101,40 +101,76 @@ namespace TP.ConcurrentProgramming.Data
 
         private void Move(object? x)
         {
-            const double displayWidth = 400;  // Szerokość obszaru gry
-            const double displayHeight = 400; // Wysokość obszaru gry
-            const double ballRadius = 10;     // Promień kulki
+            const double displayWidth = 400;  // Width of box
+            const double displayHeight = 420; // Height of box
+            const double ballRadius = 12;     // Ball radius
 
             for (int i = 0; i < BallsList.Count; i++)
             {
                 Ball ball = BallsList[i];
 
-                // Oblicz nową pozycję kulki
+                // New ball position
                 Vector newPosition = new Vector(ball.GetPosition().x + ball.Velocity.x, ball.GetPosition().y + ball.Velocity.y);
 
-                // Sprawdź kolizję z lewą i prawą ścianą
+                // Check collision with left and right walls
                 if (newPosition.x - ballRadius <= 0 || newPosition.x + ballRadius >= displayWidth)
                 {
-                    // Odwróć prędkość w osi X
+                    // Invert X velocity
                     ball.Velocity = new Vector(-ball.Velocity.x, ball.Velocity.y);
 
-                    // Ustaw kulkę w granicach
+                    // Place ball within bounds
                     double correctedX = Math.Clamp(newPosition.x, ballRadius, displayWidth - ballRadius);
                     ball.SetPosition(new Vector(correctedX, ball.GetPosition().y));
                 }
 
-                // Sprawdź kolizję z górną i dolną ścianą
+                // Check collision with top and bottom walls
                 if (newPosition.y - ballRadius <= 0 || newPosition.y + ballRadius >= displayHeight)
                 {
-                    // Odwróć prędkość w osi Y
+                    // Invert Y velocity
                     ball.Velocity = new Vector(ball.Velocity.x, -ball.Velocity.y);
 
-                    // Ustaw kulkę w granicach
+                    // Place ball within bounds
                     double correctedY = Math.Clamp(newPosition.y, ballRadius, displayHeight - ballRadius);
                     ball.SetPosition(new Vector(ball.GetPosition().x, correctedY));
                 }
 
-                // Przesuń kulkę
+                // Check collision with other balls
+                for (int j = i + 1; j < BallsList.Count; j++)
+                {
+                    Ball otherBall = BallsList[j];
+                    Vector position1 = (Vector)ball.GetPosition();
+                    Vector position2 = (Vector)otherBall.GetPosition();
+
+                    double dx = position2.x - position1.x;
+                    double dy = position2.y - position1.y;
+                    double distance = Math.Sqrt(dx * dx + dy * dy);
+
+                    if (distance <= 2 * ballRadius) // Collision detected
+                    {
+                        // Calculate new velocities using elastic collision formula
+                        Vector velocity1 = (Vector)ball.Velocity;
+                        Vector velocity2 = (Vector)otherBall.Velocity;
+
+                        double mass = 1; // Assuming all balls have the same mass
+                        double nx = dx / distance; // Normal vector
+                        double ny = dy / distance;
+
+                        double p = 2 * (velocity1.x * nx + velocity1.y * ny - velocity2.x * nx - velocity2.y * ny) / (2 * mass);
+
+                        // Update velocities
+                        ball.Velocity = new Vector(
+                            velocity1.x - p * mass * nx,
+                            velocity1.y - p * mass * ny
+                        );
+
+                        otherBall.Velocity = new Vector(
+                            velocity2.x + p * mass * nx,
+                            velocity2.y + p * mass * ny
+                        );
+                    }
+                }
+
+                // Move the ball
                 ball.Move(ball.Velocity);
             }
         }
