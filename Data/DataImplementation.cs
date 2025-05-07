@@ -29,7 +29,7 @@ namespace TP.ConcurrentProgramming.Data
             if (upperLayerHandler == null)
                 throw new ArgumentNullException(nameof(upperLayerHandler));
             Random random = new Random();
-            const double minDistance = 10.0; // Minimum distance between balls
+            const double minDistance = 15.0; // Minimum distance between balls
 
             for (int i = 0; i < numberOfBalls; i++)
             {
@@ -55,7 +55,7 @@ namespace TP.ConcurrentProgramming.Data
                     }
                 } while (!validPosition);
 
-                Vector initialVelocity = new((random.NextDouble() - 1.5) * 2, (random.NextDouble() - 1.5) * 2); // Reduced velocity
+                Vector initialVelocity = new((random.NextDouble() - 1.5) * 2, (random.NextDouble() - 1.5) * 2);
                 Ball newBall = new(startingPosition, initialVelocity);
                 upperLayerHandler(startingPosition, newBall);
                 BallsList.Add(newBall);
@@ -103,7 +103,7 @@ namespace TP.ConcurrentProgramming.Data
         {
             const double displayWidth = 400;  // Width of box
             const double displayHeight = 420; // Height of box
-            const double ballRadius = 12;     // Ball radius
+            const double ballRadius = 10;     // Ball radius
 
             for (int i = 0; i < BallsList.Count; i++)
             {
@@ -113,7 +113,7 @@ namespace TP.ConcurrentProgramming.Data
                 Vector newPosition = new Vector(ball.GetPosition().x + ball.Velocity.x, ball.GetPosition().y + ball.Velocity.y);
 
                 // Check collision with left and right walls
-                if (newPosition.x - ballRadius <= 0 || newPosition.x + ballRadius >= displayWidth)
+                if (newPosition.x - ballRadius <= -10 || newPosition.x + ballRadius >= displayWidth-14)
                 {
                     // Invert X velocity
                     ball.Velocity = new Vector(-ball.Velocity.x, ball.Velocity.y);
@@ -124,7 +124,7 @@ namespace TP.ConcurrentProgramming.Data
                 }
 
                 // Check collision with top and bottom walls
-                if (newPosition.y - ballRadius <= 0 || newPosition.y + ballRadius >= displayHeight)
+                if (newPosition.y - ballRadius <= -10 || newPosition.y + ballRadius >= displayHeight-14)
                 {
                     // Invert Y velocity
                     ball.Velocity = new Vector(ball.Velocity.x, -ball.Velocity.y);
