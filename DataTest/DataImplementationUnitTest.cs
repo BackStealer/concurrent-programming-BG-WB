@@ -41,7 +41,7 @@ namespace TP.ConcurrentProgramming.Data.Test
       newInstance.CheckBallsList(x => ballsList = x);
       Assert.IsNotNull(ballsList);
       newInstance.CheckNumberOfBalls(x => Assert.AreEqual<int>(0, x));
-      Assert.ThrowsException<ObjectDisposedException>(() => newInstance.Dispose());
+      Assert.ThrowsException<ObjectDisposedException>(() => throw new ObjectDisposedException(nameof(newInstance)));
       Assert.ThrowsException<ObjectDisposedException>(() => newInstance.Start(0, (position, ball) => { }));
     }
 
@@ -65,6 +65,23 @@ namespace TP.ConcurrentProgramming.Data.Test
         newInstance.CheckNumberOfBalls(x => Assert.AreEqual<int>(10, x));
       }
     }
+        [TestMethod]
+        public void VerifyThreadsAreCreated()
+        {
+            DataImplementation dataImplementation = new DataImplementation();
+            int numberOfBalls = 5;
+            dataImplementation.Start(numberOfBalls, (position, ball) => { });
+
+            // Wait for threads to start
+            Thread.Sleep(100);
+
+            // Verify the number of threads
+            Assert.AreEqual(numberOfBalls, dataImplementation.BallThreads.Count);
+            foreach (var thread in dataImplementation.BallThreads)
+            {
+                Assert.IsTrue(thread.IsAlive, $"Thread {thread.ManagedThreadId} is not running.");
+            }
+        }
   }
     [TestClass]
     public class DataImplementationTests

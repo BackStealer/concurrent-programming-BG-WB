@@ -56,7 +56,7 @@ namespace TP.ConcurrentProgramming.PresentationView
         protected override void OnClosed(EventArgs e)
         {
             if (DataContext is MainWindowViewModel viewModel)
-                viewModel.Dispose();
+            viewModel.Dispose();
             base.OnClosed(e);
         }
     }

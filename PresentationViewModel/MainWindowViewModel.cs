@@ -48,18 +48,26 @@ namespace TP.ConcurrentProgramming.Presentation.ViewModel
 
     protected virtual void Dispose(bool disposing)
     {
+      System.Diagnostics.Debug.WriteLine("weszło do funkcji");
       if (!Disposed)
       {
+        System.Diagnostics.Debug.WriteLine("krok1");
         if (disposing)
         {
-          Balls.Clear();
-          Observer.Dispose();
-          ModelLayer.Dispose();
-        }
+                    System.Diagnostics.Debug.WriteLine("krok2");
+                    Balls.Clear();
+                    System.Diagnostics.Debug.WriteLine("krok3");
+                    Observer.Dispose();
+                    System.Diagnostics.Debug.WriteLine("krok4");
+                    ModelLayer.Dispose();
+                    System.Diagnostics.Debug.WriteLine("krok5");
+                }
 
         // TODO: free unmanaged resources (unmanaged objects) and override finalizer
         // TODO: set large fields to null
-        Disposed = true;
+        System.Diagnostics.Debug.WriteLine("krok6");
+                Disposed = true;
+        System.Diagnostics.Debug.WriteLine("chyba zabiło");
       }
     }
 
@@ -69,6 +77,7 @@ namespace TP.ConcurrentProgramming.Presentation.ViewModel
         throw new ObjectDisposedException(nameof(MainWindowViewModel));
       Dispose(disposing: true);
       GC.SuppressFinalize(this);
+      System.Diagnostics.Debug.WriteLine("Chyba zabija wątki");
     }
 
     #endregion IDisposable

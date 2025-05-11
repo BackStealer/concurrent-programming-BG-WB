@@ -28,16 +28,32 @@ namespace TP.ConcurrentProgramming.Presentation.Model
       layerBellow = underneathLayer == null ? UnderneathLayerAPI.GetBusinessLogicLayer() : underneathLayer;
       eventObservable = Observable.FromEventPattern<BallChaneEventArgs>(this, "BallChanged");
     }
+        #region ModelAbstractApi
+        public override void Dispose()
+        {
+            if (Disposed)
+            {
+                throw new ObjectDisposedException(nameof(ModelImplementation));
+            }
 
-    #region ModelAbstractApi
+            Debug.WriteLine("ModelImplementation.Dispose() - Start");
 
-    public override void Dispose()
-    {
-      if (Disposed)
-        throw new ObjectDisposedException(nameof(Model));
-      layerBellow.Dispose();
-      Disposed = true;
-    }
+            try
+            {
+                // Zwolnij zasoby w warstwie poniżej
+                Debug.WriteLine("ModelImplementation.Dispose() - Disposing layerBellow...");
+                layerBellow.Dispose();
+                Debug.WriteLine("ModelImplementation.Dispose() - layerBellow disposed.");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"ModelImplementation.Dispose() - Exception: {ex.Message}");
+                throw;
+            }
+
+            Disposed = true;
+            Debug.WriteLine("ModelImplementation.Dispose() - End");
+        }
 
     public override IDisposable Subscribe(IObserver<IBall> observer)
     {
