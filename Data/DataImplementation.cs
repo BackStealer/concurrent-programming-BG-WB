@@ -10,6 +10,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Collections.Concurrent;
 
 namespace TP.ConcurrentProgramming.Data
 {
@@ -110,10 +111,10 @@ namespace TP.ConcurrentProgramming.Data
 
     private readonly Timer MoveTimer;
     private Random RandomGenerator = new();
-    private List<Ball> BallsList = [];
+        private readonly ConcurrentBag<Ball> BallsList = new(); // Współbieżna kolekcja piłek
         internal List<Thread> BallThreads = new(); // List of threads for each ball
         private readonly object LockObject = new(); // Lock object to prevent thread collisions
-        private readonly HashSet<(Ball, Ball)> ActiveCollisions = new(); // Tracks active collisions
+        private readonly ConcurrentDictionary<(Ball, Ball), bool> ActiveCollisions = new(); // Współbieżna struktura kolizji
 
         private void Move(object? x)
         {
@@ -123,15 +124,13 @@ namespace TP.ConcurrentProgramming.Data
 
             lock (LockObject) // Synchronize access to shared resources
             {
-                for (int i = 0; i < BallsList.Count; i++)
+                foreach (var ball in BallsList)
                 {
-                    Ball ball = BallsList[i];
-
                     // New ball position
                     Vector newPosition = new Vector(ball.GetPosition().x + ball.Velocity.x, ball.GetPosition().y + ball.Velocity.y);
 
                     // Check collision with left and right walls
-                    if (newPosition.x - ballRadius <= 0 || newPosition.x + ballRadius >= displayWidth-14)
+                    if (newPosition.x - ballRadius <= 0 || newPosition.x + ballRadius >= displayWidth - 20)
                     {
                         ball.Velocity = new Vector(-ball.Velocity.x, ball.Velocity.y);
                         double correctedX = Math.Clamp(newPosition.x, ballRadius, displayWidth - ballRadius);
@@ -139,7 +138,7 @@ namespace TP.ConcurrentProgramming.Data
                     }
 
                     // Check collision with top and bottom walls
-                    if (newPosition.y - ballRadius <= 0 || newPosition.y + ballRadius >= displayHeight-14)
+                    if (newPosition.y - ballRadius <= 0 || newPosition.y + ballRadius >= displayHeight - 20)
                     {
                         ball.Velocity = new Vector(ball.Velocity.x, -ball.Velocity.y);
                         double correctedY = Math.Clamp(newPosition.y, ballRadius, displayHeight - ballRadius);
@@ -147,9 +146,10 @@ namespace TP.ConcurrentProgramming.Data
                     }
 
                     // Check collision with other balls
-                    for (int j = i + 1; j < BallsList.Count; j++)
+                    foreach (var otherBall in BallsList)
                     {
-                        Ball otherBall = BallsList[j];
+                        if (ball == otherBall) continue;
+
                         Vector position1 = (Vector)ball.GetPosition();
                         Vector position2 = (Vector)otherBall.GetPosition();
 
@@ -198,7 +198,7 @@ namespace TP.ConcurrentProgramming.Data
     [Conditional("DEBUG")]
     internal void CheckNumberOfBalls(Action<int> returnNumberOfBalls)
     {
-      returnNumberOfBalls(BallsList.Count);
+      returnNumberOfBalls(BallsList.Count());
     }
 
     [Conditional("DEBUG")]
@@ -215,85 +215,72 @@ namespace TP.ConcurrentProgramming.Data
 
             while (!Disposed)
             {
-                lock (LockObject) // Synchronize access to shared resources
+                // Oblicz nową pozycję piłki
+                Vector newPosition = new Vector(ball.GetPosition().x + ball.Velocity.x, ball.GetPosition().y + ball.Velocity.y);
+
+                // Sprawdź kolizje ze ścianami
+                if (newPosition.x - ballRadius <= 0 || newPosition.x + ballRadius >= displayWidth - 14)
                 {
-                    // Calculate new position
-                    Vector newPosition = new Vector(ball.GetPosition().x + ball.Velocity.x, ball.GetPosition().y + ball.Velocity.y);
-
-                    // Check collision with left and right walls
-                    if (newPosition.x - ballRadius <= 0 || newPosition.x + ballRadius >= displayWidth - 14)
-                    {
-                        ball.Velocity = new Vector(-ball.Velocity.x, ball.Velocity.y);
-                        double correctedX = Math.Clamp(newPosition.x, ballRadius, displayWidth - ballRadius);
-                        ball.SetPosition(new Vector(correctedX, ball.GetPosition().y));
-                    }
-
-                    // Check collision with top and bottom walls
-                    if (newPosition.y - ballRadius <= 0 || newPosition.y + ballRadius >= displayHeight - 14)
-                    {
-                        ball.Velocity = new Vector(ball.Velocity.x, -ball.Velocity.y);
-                        double correctedY = Math.Clamp(newPosition.y, ballRadius, displayHeight - ballRadius);
-                        ball.SetPosition(new Vector(ball.GetPosition().x, correctedY));
-                    }
-
-                    // Check collision with other balls
-                    foreach (Ball otherBall in BallsList)
-                    {
-                        if (ball == otherBall) continue;
-
-                        Vector position1 = (Vector)ball.GetPosition();
-                        Vector position2 = (Vector)otherBall.GetPosition();
-
-                        double dx = position2.x - position1.x;
-                        double dy = position2.y - position1.y;
-                        double distance = Math.Sqrt(dx * dx + dy * dy);
-
-                        if (distance <= 2 * ballRadius) // Collision detected
-                        {
-                            var collisionPair = (ball, otherBall);
-
-                            lock (ActiveCollisions)
-                            {
-                                if (ActiveCollisions.Contains(collisionPair) || ActiveCollisions.Contains((otherBall, ball)))
-                                    continue;
-
-                                ActiveCollisions.Add(collisionPair);
-                            }
-
-                            // Calculate new velocities using elastic collision formula
-                            Vector velocity1 = (Vector)ball.Velocity;
-                            Vector velocity2 = (Vector)otherBall.Velocity;
-
-                            double nx = dx / distance;
-                            double ny = dy / distance;
-
-                            double p = 2 * (velocity1.x * nx + velocity1.y * ny - velocity2.x * nx - velocity2.y * ny) / 2;
-
-                            lock (LockObject) // Synchronize velocity updates
-                            {
-                                ball.Velocity = new Vector(
-                                    velocity1.x - p * nx,
-                                    velocity1.y - p * ny
-                                );
-
-                                otherBall.Velocity = new Vector(
-                                    velocity2.x + p * nx,
-                                    velocity2.y + p * ny
-                                );
-                            }
-
-                            lock (ActiveCollisions)
-                            {
-                                ActiveCollisions.Remove(collisionPair);
-                            }
-                        }
-                    }
-
-                    // Move the ball
-                    ball.Move(ball.Velocity);
+                    ball.Velocity = new Vector(-ball.Velocity.x, ball.Velocity.y);
+                    double correctedX = Math.Clamp(newPosition.x, ballRadius, displayWidth - ballRadius);
+                    ball.SetPosition(new Vector(correctedX, ball.GetPosition().y));
                 }
 
-                Thread.Sleep(10); // Control the speed of the ball
+                if (newPosition.y - ballRadius <= 0 || newPosition.y + ballRadius >= displayHeight - 14)
+                {
+                    ball.Velocity = new Vector(ball.Velocity.x, -ball.Velocity.y);
+                    double correctedY = Math.Clamp(newPosition.y, ballRadius, displayHeight - ballRadius);
+                    ball.SetPosition(new Vector(ball.GetPosition().x, correctedY));
+                }
+
+                // Sprawdź kolizje z innymi piłkami
+                foreach (Ball otherBall in BallsList)
+                {
+                    if (ball == otherBall) continue;
+
+                    Vector position1 = (Vector)ball.GetPosition();
+                    Vector position2 = (Vector)otherBall.GetPosition();
+
+                    double dx = position2.x - position1.x;
+                    double dy = position2.y - position1.y;
+                    double distance = Math.Sqrt(dx * dx + dy * dy);
+
+                    if (distance <= 2 * ballRadius) // Kolizja wykryta
+                    {
+                        var collisionPair = (ball, otherBall);
+
+                        // Dodaj kolizję do ActiveCollisions, jeśli jeszcze jej nie ma
+                        if (!ActiveCollisions.TryAdd(collisionPair, true))
+                            continue;
+
+                        // Oblicz nowe prędkości
+                        Vector velocity1 = (Vector)ball.Velocity;
+                        Vector velocity2 = (Vector)otherBall.Velocity;
+
+                        double nx = dx / distance;
+                        double ny = dy / distance;
+
+                        double p = 2 * (velocity1.x * nx + velocity1.y * ny - velocity2.x * nx - velocity2.y * ny) / 2;
+
+                        ball.Velocity = new Vector(
+                            velocity1.x - p * nx,
+                            velocity1.y - p * ny
+                        );
+
+                        otherBall.Velocity = new Vector(
+                            velocity2.x + p * nx,
+                            velocity2.y + p * ny
+                        );
+
+                        // Usuń kolizję z ActiveCollisions
+                        ActiveCollisions.TryRemove(collisionPair, out _);
+                    }
+                }
+
+                // Przesuń piłkę
+                ball.Move(ball.Velocity);
+
+                Thread.Sleep(10); // Kontrola prędkości piłki
             }
         }
 
