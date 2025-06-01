@@ -65,6 +65,12 @@ namespace TP.ConcurrentProgramming.Data
 
                 Vector initialVelocity = new((random.NextDouble() - 0.5) * 2, (random.NextDouble() - 0.5) * 2);
                 Ball newBall = new(startingPosition, initialVelocity);
+                BallStartTimes[newBall] = DateTime.UtcNow;
+                InitialVelocities[newBall] = initialVelocity;
+                // Store normalized direction
+                double speed = Math.Sqrt(initialVelocity.x * initialVelocity.x + initialVelocity.y * initialVelocity.y);
+                BallDirections[newBall] = speed > 0 ? new Vector(initialVelocity.x / speed, initialVelocity.y / speed) : new Vector(1, 0);
+
                 upperLayerHandler(startingPosition, newBall);
                 BallsList.Add(newBall);
 
@@ -105,7 +111,6 @@ namespace TP.ConcurrentProgramming.Data
             }
         }
 
-
         public override void Dispose()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
@@ -132,6 +137,9 @@ namespace TP.ConcurrentProgramming.Data
             "diagnostics.log"
         );
         private readonly object CollisionLock = new();
+        private readonly ConcurrentDictionary<Ball, DateTime> BallStartTimes = new();
+        private readonly ConcurrentDictionary<Ball, Vector> InitialVelocities = new();
+        private readonly ConcurrentDictionary<Ball, Vector> BallDirections = new();
 
         private void Move(object? x)
         {
@@ -226,19 +234,44 @@ namespace TP.ConcurrentProgramming.Data
 
         private void MoveBall(Ball ball)
         {
-            const double displayWidth = 400;  // Width of the box
-            const double displayHeight = 420; // Height of the box
-            const double ballRadius = 10;     // Ball radius
+            const double displayWidth = 400;
+            const double displayHeight = 420;
+            const double ballRadius = 10;
+
+            // Get the initial velocity for direction and amplitude
+            Vector initialVelocity = InitialVelocities.TryGetValue(ball, out var storedInitialVelocity)
+                ? storedInitialVelocity
+                : new Vector(1, 1);
+
+            double initialSpeed = Math.Sqrt(initialVelocity.x * initialVelocity.x + initialVelocity.y * initialVelocity.y);
+
+            // Get the start time for this ball
+            DateTime startTime = BallStartTimes.TryGetValue(ball, out var t) ? t : DateTime.UtcNow;
 
             while (!Disposed)
             {
+                // Get the current direction
+                Vector direction = BallDirections.TryGetValue(ball, out var dir) ? dir : new Vector(1, 0);
+
+                // Calculate elapsed time in seconds
+                double elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
+
+                // Sinusoidal speed factor (oscillates between 0 and 1)
+                double speedFactor = Math.Abs(Math.Sin(elapsed));
+
+                // Set velocity as direction * (initial speed) * (sinusoidal factor)
+                ball.Velocity = new Vector(
+                    direction.x * initialSpeed * speedFactor,
+                    direction.y * initialSpeed * speedFactor
+                );
+
                 // Calculate the new position of the ball
                 Vector newPosition = new Vector(ball.GetPosition().x + ball.Velocity.x, ball.GetPosition().y + ball.Velocity.y);
 
                 // Log diagnostic information
-                LogDiagnostics($"Ball {ball.GetHashCode()} moved to position ({newPosition.x}, {newPosition.y}) with velocity ({ball.Velocity.x}, {ball.Velocity.y})");
+                LogDiagnostics($"Ball {ball.GetHashCode()} moved to position ({newPosition.x}, {newPosition.y}) with velocity ({ball.Velocity.x}, {ball.Velocity.y}), elapsed: {elapsed:F2}");
 
-                // Check collision with other balls
+                // Collision logic (update direction on collision)
                 lock (CollisionLock)
                 {
                     foreach (var otherBall in BallsList)
@@ -252,9 +285,8 @@ namespace TP.ConcurrentProgramming.Data
                         double dy = position2.y - position1.y;
                         double distance = Math.Sqrt(dx * dx + dy * dy);
 
-                        if (distance <= 2 * ballRadius) // Collision detected
+                        if (distance <= 2 * ballRadius)
                         {
-                            // Handle collision
                             Vector velocity1 = (Vector)ball.Velocity;
                             Vector velocity2 = (Vector)otherBall.Velocity;
 
@@ -272,27 +304,46 @@ namespace TP.ConcurrentProgramming.Data
                                 velocity2.x + p * nx,
                                 velocity2.y + p * ny
                             );
+
+                            // Update direction for both balls after collision
+                            double newSpeed1 = Math.Sqrt(ball.Velocity.x * ball.Velocity.x + ball.Velocity.y * ball.Velocity.y);
+                            if (newSpeed1 > 0)
+                                BallDirections[ball] = new Vector(ball.Velocity.x / newSpeed1, ball.Velocity.y / newSpeed1);
+
+                            double newSpeed2 = Math.Sqrt(otherBall.Velocity.x * otherBall.Velocity.x + otherBall.Velocity.y * otherBall.Velocity.y);
+                            if (newSpeed2 > 0)
+                                BallDirections[otherBall] = new Vector(otherBall.Velocity.x / newSpeed2, otherBall.Velocity.y / newSpeed2);
                         }
                     }
                 }
-                    // Check collision with left and right walls
-                    if (newPosition.x - ballRadius <= 0 || newPosition.x + ballRadius >= displayWidth - 20)
+
+                // Wall collision logic (update direction on bounce)
+                bool bounced = false;
+                if (newPosition.x - ballRadius <= 0 || newPosition.x + ballRadius >= displayWidth - 20)
                 {
                     ball.Velocity = new Vector(-ball.Velocity.x, ball.Velocity.y);
                     double correctedX = Math.Clamp(newPosition.x, ballRadius, displayWidth - ballRadius);
                     ball.SetPosition(new Vector(correctedX, ball.GetPosition().y));
+                    bounced = true;
                 }
-
-                // Check collision with top and bottom walls
                 if (newPosition.y - ballRadius <= 0 || newPosition.y + ballRadius >= displayHeight - 20)
                 {
                     ball.Velocity = new Vector(ball.Velocity.x, -ball.Velocity.y);
                     double correctedY = Math.Clamp(newPosition.y, ballRadius, displayHeight - ballRadius);
                     ball.SetPosition(new Vector(ball.GetPosition().x, correctedY));
+                    bounced = true;
                 }
-
-                // Move the ball
-                ball.Move(ball.Velocity);
+                if (bounced)
+                {
+                    double newSpeed = Math.Sqrt(ball.Velocity.x * ball.Velocity.x + ball.Velocity.y * ball.Velocity.y);
+                    if (newSpeed > 0)
+                        BallDirections[ball] = new Vector(ball.Velocity.x / newSpeed, ball.Velocity.y / newSpeed);
+                }
+                else
+                {
+                    // Move the ball
+                    ball.Move(ball.Velocity);
+                }
 
                 Thread.Sleep(10); // Control the speed of the ball
             }
