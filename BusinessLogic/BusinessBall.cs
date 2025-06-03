@@ -12,15 +12,22 @@ namespace TP.ConcurrentProgramming.BusinessLogic
 {
   internal class Ball : IBall
   {
+        Data.IBall dataBall;
     public Ball(Data.IBall ball)
     {
       ball.NewPositionNotification += RaisePositionChangeEvent;
-    }
+            dataBall = ball;
+        }
 
     #region IBall
 
     public event EventHandler<IPosition>? NewPositionNotification;
+    public event EventHandler<String>? NewColorNotification;
 
+        public void changeDataBallColor()
+        {
+            NewColorNotification?.Invoke(this, dataBall.changeColor());
+        }
     #endregion IBall
 
     #region private

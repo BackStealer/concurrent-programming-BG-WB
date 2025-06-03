@@ -9,6 +9,7 @@
 //  by introducing yourself and telling us what you do with this community.
 //_____________________________________________________________________________________________________________________________________
 
+using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -19,12 +20,14 @@ namespace TP.ConcurrentProgramming.Presentation.Model
 {
   internal class ModelBall : IBall
   {
-    public ModelBall(double top, double left, LogicIBall underneathBall)
-    {
-      TopBackingField = top;
-      LeftBackingField = left;
-      underneathBall.NewPositionNotification += NewPositionNotification;
-    }
+        public ModelBall(double top, double left, LogicIBall underneathBall)
+        {
+            TopBackingField = top;
+            LeftBackingField = left;
+            Color = "Red";
+            underneathBall.NewPositionNotification += NewPositionNotification;
+            underneathBall.NewColorNotification += NewColorNotification;
+        }
 
     #region IBall
 
@@ -66,12 +69,17 @@ namespace TP.ConcurrentProgramming.Presentation.Model
 
     private double TopBackingField;
     private double LeftBackingField;
-
+    public String Color { get; set; } = "Blue";
     private void NewPositionNotification(object sender, IPosition e)
     {
       Top = e.y; Left = e.x;
     }
 
+    private void NewColorNotification(object sender, String e)
+    {
+        Color = e;
+        RaisePropertyChanged(nameof(Color));
+    }
     private void RaisePropertyChanged([CallerMemberName] string propertyName = "")
     {
       PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

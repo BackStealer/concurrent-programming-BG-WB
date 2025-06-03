@@ -8,6 +8,9 @@
 //
 //_____________________________________________________________________________________________________________________________________
 
+using System;
+using System.Drawing;
+
 namespace TP.ConcurrentProgramming.Data
 {
     internal class Ball : IBall
@@ -18,6 +21,7 @@ namespace TP.ConcurrentProgramming.Data
         {
             Position = initialPosition;
             Velocity = initialVelocity;
+            Color = "Red";
         }
 
         #endregion ctor
@@ -25,6 +29,7 @@ namespace TP.ConcurrentProgramming.Data
         #region IBall
 
         public event EventHandler<IVector>? NewPositionNotification;
+        event EventHandler<String> NewColorNotification;
 
         public IVector Velocity { get; set; }
 
@@ -33,7 +38,19 @@ namespace TP.ConcurrentProgramming.Data
         #region private
 
         private Vector Position;
-
+        private string _color = "Blue";
+        public string Color
+        {
+            get => _color;
+            set
+            {
+                if (_color != value)
+                {
+                    _color = value;
+                    NewColorNotification?.Invoke(this, Color);
+                }
+            }
+        }
         private void RaiseNewPositionChangeNotification()
         {
             NewPositionNotification?.Invoke(this, Position);
@@ -51,6 +68,16 @@ namespace TP.ConcurrentProgramming.Data
         public IVector GetPosition()
         {
             return Position;
+        }
+        public string changeColor()
+        {
+            if (this.Color == "Blue")
+                this.Color = "Red";
+            else if (this.Color == "Red")
+                this.Color = "Yellow";
+            else
+                this.Color = "Blue";
+            return this.Color;
         }
         public void SetPosition(IVector position)
         {

@@ -60,5 +60,6 @@ namespace TP.ConcurrentProgramming.Data
     IVector Velocity { get; set; }
 
         void Move(IVector vector);
+        public String changeColor() { return "0"; }
     }
 }
